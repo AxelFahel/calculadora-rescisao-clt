@@ -86,7 +86,7 @@ async function verDetalhe(item: HistoricoItem) {
 
 async function duplicar(item: HistoricoItem) {
   rescisao.carregarDados(item.resultado.dadosContrato)
-  await router.push({ name: 'novo-calculo' })
+  await router.push({ name: 'novo-calculo', query: { preservar: '1' } })
 }
 
 function confirmarLimpeza() {

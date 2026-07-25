@@ -26,6 +26,7 @@
                 :to="link.to"
                 class="px-3 py-1.5 rounded-lg text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white transition-all"
                 :class="{ 'bg-brand-50 dark:bg-brand-950 text-brand-700 dark:text-brand-300': $route.path === link.to }"
+                @click="link.to === '/calculo/novo' && iniciarNovoCalculo()"
               >
                 {{ link.label }}
               </RouterLink>
@@ -34,7 +35,7 @@
             <!-- Right actions -->
             <div class="flex items-center gap-2">
               <ThemeToggle />
-              <RouterLink to="/calculo/novo" class="btn-primary hidden sm:inline-flex">
+              <RouterLink to="/calculo/novo" class="btn-primary hidden sm:inline-flex" @click="iniciarNovoCalculo">
                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
                 </svg>
@@ -78,8 +79,14 @@
 import { ref } from 'vue'
 import { RouterLink, RouterView } from 'vue-router'
 import ThemeToggle from './components/ui/ThemeToggle.vue'
+import { useRescisaoStore } from './stores/rescisao.store'
 
 const isDark = ref(localStorage.getItem('theme') === 'dark')
+const rescisao = useRescisaoStore()
+
+function iniciarNovoCalculo() {
+  rescisao.limpar()
+}
 
 const navLinks = [
   { to: '/', label: 'Início' },

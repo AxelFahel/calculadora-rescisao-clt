@@ -28,11 +28,11 @@
           </div>
           <div>
             <label for="cargo" class="label">Cargo</label>
-            <input id="cargo" v-model="dados.cargo" type="text" placeholder="Ex: Analista de TI" class="input" />
+            <input id="cargo" v-model="dados.cargo" type="text" placeholder="Ex: Analista de TI" class="input" @change="syncStore" />
           </div>
           <div>
             <label for="empresa" class="label">Empresa</label>
-            <input id="empresa" v-model="dados.empresa" type="text" placeholder="Ex: Acme Ltda." class="input" />
+            <input id="empresa" v-model="dados.empresa" type="text" placeholder="Ex: Acme Ltda." class="input" @change="syncStore" />
           </div>
           <div>
             <label for="cnpj" class="label">CNPJ</label>
@@ -41,7 +41,7 @@
           </div>
           <div>
             <label for="sindicato" class="label">Sindicato / Convenção</label>
-            <input id="sindicato" v-model="dados.sindicato" type="text" placeholder="Opcional" class="input" />
+            <input id="sindicato" v-model="dados.sindicato" type="text" placeholder="Opcional" class="input" @change="syncStore" />
           </div>
         </div>
       </div>
@@ -206,6 +206,7 @@ function maskCNPJ(event: Event) {
   else if (v.length > 2) v = v.replace(/(\d{2})(\d{3})/, '$1.$2')
   dados.cnpj = v
   input.value = v
+  syncStore()
 }
 
 function validate(field: string) {

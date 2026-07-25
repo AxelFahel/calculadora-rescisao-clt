@@ -14,8 +14,21 @@
 
     <!-- Stepper -->
     <div class="card p-6 mb-6">
-      <AppStepper :steps="wizardSteps" :current-step="store.etapaAtual" @go-to="store.irParaEtapa" />
+      <AppStepper :steps="wizardSteps" :current-step="store.etapaAtual" @go-to="irParaEtapaValidada" />
     </div>
+
+    <AppAlert
+      v-if="errosValidacao.length"
+      type="error"
+      title="Revise os dados antes de continuar"
+      class="mb-6"
+      dismissible
+      @dismiss="errosValidacao = []"
+    >
+      <ul class="list-disc pl-5 space-y-1">
+        <li v-for="erro in errosValidacao" :key="erro">{{ erro }}</li>
+      </ul>
+    </AppAlert>
 
     <!-- Step content -->
     <div class="card p-6 sm:p-8 mb-6 min-h-[400px]">
@@ -42,7 +55,7 @@
           v-if="store.etapaAtual < 4"
           variant="primary"
           id="btn-avancar-etapa"
-          @click="store.avancarEtapa()"
+          @click="avancarEtapaValidada()"
         >
           Continuar
           <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
@@ -64,11 +77,18 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
-import { RouterLink, useRouter } from 'vue-router'
+import { computed, onBeforeMount, ref } from 'vue'
+import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { useRescisaoStore } from '../stores/rescisao.store'
+import {
+  schemaDadosContrato,
+  schemaDadosContratoCompleto,
+  schemaTipoDesligamento,
+  schemaVerbasFgts,
+} from '../domain/rescisao/validacoes'
 import AppStepper from '../components/ui/AppStepper.vue'
 import AppButton from '../components/ui/AppButton.vue'
+import AppAlert from '../components/ui/AppAlert.vue'
 import Step1DadosContrato from '../components/forms/Step1DadosContrato.vue'
 import Step2Desligamento from '../components/forms/Step2Desligamento.vue'
 import Step3VerbasFgts from '../components/forms/Step3VerbasFgts.vue'
@@ -76,6 +96,12 @@ import Step4Documentos from '../components/forms/Step4Documentos.vue'
 
 const store = useRescisaoStore()
 const router = useRouter()
+const route = useRoute()
+const errosValidacao = ref<string[]>([])
+
+onBeforeMount(() => {
+  if (route.query.preservar !== '1') store.limpar()
+})
 
 const wizardSteps = [
   { id: 'dados',       label: 'Dados do Contrato' },
@@ -95,7 +121,36 @@ const currentStepComponent = computed(() => {
   }
 })
 
+function validarEtapa(etapa = store.etapaAtual): boolean {
+  const schema =
+    etapa === 1
+      ? schemaDadosContrato
+      : etapa === 2
+        ? schemaTipoDesligamento
+        : etapa === 3
+          ? schemaVerbasFgts
+          : schemaDadosContratoCompleto
+  const resultado = schema.safeParse(store.dados)
+
+  errosValidacao.value = resultado.success
+    ? []
+    : [...new Set(resultado.error.issues.map((issue) => issue.message))]
+  return resultado.success
+}
+
+function avancarEtapaValidada() {
+  if (validarEtapa()) store.avancarEtapa()
+}
+
+function irParaEtapaValidada(etapa: number) {
+  if (etapa <= store.etapaAtual || validarEtapa()) {
+    errosValidacao.value = []
+    store.irParaEtapa(etapa)
+  }
+}
+
 async function calcularEIrParaResultado() {
+  if (!validarEtapa(4)) return
   store.calcular()
   if (store.resultado) {
     store.irParaEtapa(5)

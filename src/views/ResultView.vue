@@ -14,7 +14,7 @@
       <div class="mb-6 flex flex-wrap items-start justify-between gap-4">
         <div>
           <div class="flex items-center gap-3 mb-4">
-            <RouterLink to="/calculo/novo" class="btn-ghost px-2 py-1.5 text-sm no-print">
+            <RouterLink :to="{ name: 'novo-calculo', query: { preservar: '1' } }" class="btn-ghost px-2 py-1.5 text-sm no-print">
               <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
               Voltar
             </RouterLink>

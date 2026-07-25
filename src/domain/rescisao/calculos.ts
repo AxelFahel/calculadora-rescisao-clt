@@ -183,20 +183,40 @@ export function calcularSaldoSalario(dados: DadosContrato): number {
 export function calcularAvos13(dataAdmissao: string, dataReferencia: string): number {
   const admissao = dayjs(dataAdmissao)
   const referencia = dayjs(dataReferencia)
+  const inicioAno = referencia.startOf('year')
+  const inicioContagem = admissao.isAfter(inicioAno) ? admissao : inicioAno
 
-  // Meses completos
-  let avos = referencia.diff(admissao, 'month')
+  if (inicioContagem.isAfter(referencia)) return 0
 
-  // Verifica os dias restantes do último mês parcial
-  const aposAvos = admissao.add(avos, 'month')
-  const diasRestantes = referencia.diff(aposAvos, 'day')
+  let avos = 0
+  let mes = inicioContagem.startOf('month')
 
-  if (diasRestantes >= DIAS_MINIMOS_MES_CHEIO) {
-    avos += 1
+  while (mes.isBefore(referencia, 'month') || mes.isSame(referencia, 'month')) {
+    const inicioNoMes = inicioContagem.isAfter(mes) ? inicioContagem : mes
+    const fimMes = mes.endOf('month').startOf('day')
+    const fimNoMes = referencia.isBefore(fimMes) ? referencia : fimMes
+    const diasTrabalhados = fimNoMes.diff(inicioNoMes, 'day') + 1
+
+    if (diasTrabalhados >= DIAS_MINIMOS_MES_CHEIO) avos += 1
+    mes = mes.add(1, 'month')
   }
 
-  // Máximo 12 avos
   return Math.min(avos, MESES_ANO)
+}
+
+/** Calcula o desconto das faltas não justificadas no mês da rescisão. */
+export function calcularDescontoFaltas(dados: DadosContrato): number {
+  if (dados.faltas <= 0) return 0
+
+  const diasTrabalhados =
+    dados.diasTrabalhadosNoMes !== null && dados.diasTrabalhadosNoMes !== undefined
+      ? dados.diasTrabalhadosNoMes
+      : dayjs(dados.ultimoDiaTrabalhado).date()
+  const diasDescontados = Math.min(dados.faltas, diasTrabalhados)
+  const salarioBase =
+    dados.salarioBrutoMensal + (dados.temMediasVariaveis ? dados.mediaVariavel : 0)
+
+  return arredondar((salarioBase / DIVISOR_SALARIO_MENSAL) * diasDescontados)
 }
 
 /**
@@ -308,10 +328,10 @@ export function calcularFgtsEstimadoSobreVerbas(
   verbas: Array<{ valor: number; incideFgts?: boolean }>,
 ): number {
   const baseIncidente = verbas
-    .filter((v) => v.incideFgts && v.valor > 0)
+    .filter((v) => v.incideFgts)
     .reduce((acc, v) => acc + v.valor, 0)
 
-  return arredondar(baseIncidente * PERCENTUAL_FGTS)
+  return arredondar(Math.max(0, baseIncidente) * PERCENTUAL_FGTS)
 }
 
 /**
@@ -481,6 +501,29 @@ export function calcularRescisao(dados: DadosContrato): ResultadoRescisao {
     }
   }
 
+  // ── Faltas não justificadas ──
+  const descontoFaltas = calcularDescontoFaltas(dados)
+  if (descontoFaltas > 0) {
+    const diasTrabalhados =
+      dados.diasTrabalhadosNoMes !== null && dados.diasTrabalhadosNoMes !== undefined
+        ? dados.diasTrabalhadosNoMes
+        : dayjs(dados.ultimoDiaTrabalhado).date()
+    const diasDescontados = Math.min(dados.faltas, diasTrabalhados)
+    verbas.push({
+      id: 'desconto_faltas',
+      nome: 'Faltas não justificadas',
+      base: dados.salarioBrutoMensal,
+      formula: `R$ ${fmt(dados.salarioBrutoMensal)} / 30 × ${diasDescontados} dia${diasDescontados > 1 ? 's' : ''}`,
+      valor: descontoFaltas,
+      positivo: false,
+      incideFgts: true,
+      incideInss: true,
+      incideIrrf: true,
+      obrigatoria: false,
+      observacoes: 'Reduz a remuneração e as bases de FGTS, INSS e IRRF do mês',
+    })
+  }
+
   // ── Créditos extras informados ──
   dados.creditosExtras.forEach((credito, index) => {
     if (credito.valor > 0) {
@@ -522,9 +565,12 @@ export function calcularRescisao(dados: DadosContrato): ResultadoRescisao {
   // ── INSS ──
   // A remuneração mensal e o 13º usam bases separadas para fins previdenciários.
   const baseINSSMensal = arredondar(
-    verbas
-      .filter((v) => v.positivo && v.incideInss && v.id !== '13_proporcional')
-      .reduce((acc, v) => acc + v.valor, 0),
+    Math.max(
+      0,
+      verbas
+        .filter((v) => v.incideInss && v.id !== '13_proporcional')
+        .reduce((acc, v) => acc + (v.positivo ? v.valor : -v.valor), 0),
+    ),
   )
   const baseINSS13 = arredondar(
     verbas
@@ -563,9 +609,12 @@ export function calcularRescisao(dados: DadosContrato): ResultadoRescisao {
   // ── IRRF ──
   // O 13º também é tributado exclusivamente na fonte, separado da remuneração mensal.
   const baseIRRFMensal = arredondar(
-    verbas
-      .filter((v) => v.positivo && v.incideIrrf && v.id !== '13_proporcional')
-      .reduce((acc, v) => acc + v.valor, 0),
+    Math.max(
+      0,
+      verbas
+        .filter((v) => v.incideIrrf && v.id !== '13_proporcional')
+        .reduce((acc, v) => acc + (v.positivo ? v.valor : -v.valor), 0),
+    ),
   )
   const baseIRRF13 = arredondar(
     verbas

@@ -10,6 +10,7 @@ import {
   calcularDiasAvisoPrevio,
   calcularValorAvisoPrevioIndenizado,
   calcularSaldoSalario,
+  calcularDescontoFaltas,
   calcularAvos13,
   calcular13Proporcional,
   calcularFeriasProporcionais,
@@ -179,6 +180,10 @@ describe('calcularSaldoSalario', () => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe('calcular13Proporcional', () => {
+  it('considera apenas os meses do ano da rescisão em contratos antigos', () => {
+    expect(calcularAvos13('2020-04-10', '2026-07-15')).toBe(7)
+  })
+
   it('calcula 6 avos corretamente', () => {
     const dados = makeDados({
       dataAdmissao: '2024-01-01',
@@ -212,6 +217,34 @@ describe('calcular13Proporcional', () => {
     const { avos } = calcular13Proporcional(dados)
     // 16 dias no primeiro mês (de 16 jan a 1 fev = 16 dias) >= 15, conta como 1 mês
     expect(avos).toBeGreaterThanOrEqual(1)
+  })
+})
+
+describe('calcularDescontoFaltas', () => {
+  it('desconta um trinta avos do salário por falta', () => {
+    const dados = makeDados({
+      salarioBrutoMensal: 3000,
+      diasTrabalhadosNoMes: 20,
+      faltas: 2,
+    })
+
+    expect(calcularDescontoFaltas(dados)).toBe(200)
+  })
+
+  it('inclui o desconto e reduz as bases mensais de impostos', () => {
+    const semFaltas = calcularRescisao(makeDados({
+      tipoAvisoPrevio: TipoAvisoPrevio.NAO_SE_APLICA,
+      diasTrabalhadosNoMes: 20,
+    }))
+    const comFaltas = calcularRescisao(makeDados({
+      tipoAvisoPrevio: TipoAvisoPrevio.NAO_SE_APLICA,
+      diasTrabalhadosNoMes: 20,
+      faltas: 2,
+    }))
+
+    expect(comFaltas.verbas.some((verba) => verba.id === 'desconto_faltas')).toBe(true)
+    expect(comFaltas.inss.base).toBeLessThan(semFaltas.inss.base)
+    expect(comFaltas.totalLiquido).toBeLessThan(semFaltas.totalLiquido)
   })
 })
 

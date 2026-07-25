@@ -101,11 +101,40 @@ export const schemaVerbasFgts = z.object({
   saldoFgtsInformado: valorPositivo,
   percentualMultaFgtsManual: z.number().min(-1).max(1),
   diasTrabalhadosNoMes: z.number().int().min(1).max(31).nullable(),
-  faltas: z.number().int().min(0),
+  faltas: z.number().int().min(0).max(31),
   dependentesIRRF: z.number().int().min(0).max(10),
   descontosExtras: z.array(schemaCreditoDesconto),
   creditosExtras: z.array(schemaCreditoDesconto),
   observacoes: z.string().max(1000).optional(),
+}).superRefine((data, ctx) => {
+  if (data.temFeriasVencidas && data.quantidadePeriodosVencidos < 1) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['quantidadePeriodosVencidos'],
+      message: 'Informe ao menos um período de férias vencidas',
+    })
+  }
+  if (data.teveAdiantamento13 && data.valorAdiantamento13 <= 0) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['valorAdiantamento13'],
+      message: 'Informe o valor adiantado do 13º salário',
+    })
+  }
+  if (data.temMediasVariaveis && data.mediaVariavel <= 0) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['mediaVariavel'],
+      message: 'Informe a média mensal das verbas variáveis',
+    })
+  }
+  if (data.diasTrabalhadosNoMes !== null && data.faltas > data.diasTrabalhadosNoMes) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['faltas'],
+      message: 'As faltas não podem superar os dias trabalhados informados',
+    })
+  }
 })
 
 // ─────────────────────────────────────────────────────────────────────────────
