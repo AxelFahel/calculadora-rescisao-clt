@@ -25,9 +25,10 @@
               v-model.number="dados.quantidadePeriodosVencidos"
               type="number"
               min="1" max="5"
-              class="input w-32"
+              :class="['w-32', store.errosValidacao.quantidadePeriodosVencidos ? 'input-error' : 'input']"
               @change="syncStore"
             />
+            <p v-if="store.errosValidacao.quantidadePeriodosVencidos" class="error-msg">{{ store.errosValidacao.quantidadePeriodosVencidos }}</p>
           </div>
         </Transition>
       </div>
@@ -54,9 +55,10 @@
                 v-model="adiantamento13Display"
                 type="text"
                 inputmode="numeric"
-                class="input pl-10"
+                :class="['pl-10', store.errosValidacao.valorAdiantamento13 ? 'input-error' : 'input']"
                 @input="handleMoney($event, 'valorAdiantamento13', 'adiantamento13Display')"
               />
+              <p v-if="store.errosValidacao.valorAdiantamento13" class="error-msg">{{ store.errosValidacao.valorAdiantamento13 }}</p>
             </div>
           </div>
         </Transition>
@@ -84,9 +86,10 @@
                 v-model="mediaDisplay"
                 type="text"
                 inputmode="numeric"
-                class="input pl-10"
+                :class="['pl-10', store.errosValidacao.mediaVariavel ? 'input-error' : 'input']"
                 @input="handleMoney($event, 'mediaVariavel', 'mediaDisplay')"
               />
+              <p v-if="store.errosValidacao.mediaVariavel" class="error-msg">{{ store.errosValidacao.mediaVariavel }}</p>
             </div>
           </div>
         </Transition>
@@ -152,7 +155,9 @@
         </div>
         <div>
           <label for="faltas" class="label">Faltas não justificadas</label>
-          <input id="faltas" v-model.number="dados.faltas" type="number" min="0" class="input" @change="syncStore" />
+          <input id="faltas" v-model.number="dados.faltas" type="number" min="0" :class="store.errosValidacao.faltas ? 'input-error' : 'input'" @change="syncStore" />
+          <p v-if="store.errosValidacao.faltas" class="error-msg">{{ store.errosValidacao.faltas }}</p>
+          <p v-else class="text-xs text-slate-400 mt-1">Cada falta reduz 1/30 da remuneração e suas bases tributárias.</p>
         </div>
         <div>
           <label for="dependentes" class="label">Dependentes (IRRF)</label>

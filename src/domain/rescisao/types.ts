@@ -164,7 +164,10 @@ export interface ResultadoRescisao {
   irrf: DetalheIRRF
   totalBruto: number
   totalDescontos: number
+  /** Valor estimado pago diretamente no acerto rescisório */
   totalLiquido: number
+  /** Soma informativa do pagamento direto com a multa do FGTS */
+  totalComFgts?: number
   dataCalculo: string // ISO datetime
   /** Versão do motor de cálculo */
   versaoMotor: string

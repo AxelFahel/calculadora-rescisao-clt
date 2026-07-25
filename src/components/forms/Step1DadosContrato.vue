@@ -18,12 +18,12 @@
               v-model="dados.nomeTrabalhador"
               type="text"
               placeholder="Ex: João da Silva"
-              :class="errors.nomeTrabalhador ? 'input-error' : 'input'"
+              :class="erroCampo('nomeTrabalhador') ? 'input-error' : 'input'"
               @blur="validate('nomeTrabalhador')"
             />
-            <p v-if="errors.nomeTrabalhador" class="error-msg">
+            <p v-if="erroCampo('nomeTrabalhador')" class="error-msg">
               <svg class="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-              {{ errors.nomeTrabalhador }}
+              {{ erroCampo('nomeTrabalhador') }}
             </p>
           </div>
           <div>
@@ -61,11 +61,11 @@
               type="text"
               placeholder="DD/MM/AAAA"
               maxlength="10"
-              :class="errors.dataAdmissao ? 'input-error' : 'input'"
+              :class="erroCampo('dataAdmissao') ? 'input-error' : 'input'"
               @input="handleDateInput('admissao', $event)"
               @blur="validate('dataAdmissao')"
             />
-            <p v-if="errors.dataAdmissao" class="error-msg">{{ errors.dataAdmissao }}</p>
+            <p v-if="erroCampo('dataAdmissao')" class="error-msg">{{ erroCampo('dataAdmissao') }}</p>
           </div>
           <div>
             <label for="data-desligamento" class="label label-required">Data de desligamento</label>
@@ -75,11 +75,11 @@
               type="text"
               placeholder="DD/MM/AAAA"
               maxlength="10"
-              :class="errors.dataDesligamento ? 'input-error' : 'input'"
+              :class="erroCampo('dataDesligamento') ? 'input-error' : 'input'"
               @input="handleDateInput('desligamento', $event)"
               @blur="validate('dataDesligamento')"
             />
-            <p v-if="errors.dataDesligamento" class="error-msg">{{ errors.dataDesligamento }}</p>
+            <p v-if="erroCampo('dataDesligamento')" class="error-msg">{{ erroCampo('dataDesligamento') }}</p>
           </div>
           <div>
             <label for="ultimo-dia" class="label label-required">Último dia trabalhado</label>
@@ -89,11 +89,11 @@
               type="text"
               placeholder="DD/MM/AAAA"
               maxlength="10"
-              :class="errors.ultimoDiaTrabalhado ? 'input-error' : 'input'"
+              :class="erroCampo('ultimoDiaTrabalhado') ? 'input-error' : 'input'"
               @input="handleDateInput('ultimoDia', $event)"
               @blur="validate('ultimoDiaTrabalhado')"
             />
-            <p v-if="errors.ultimoDiaTrabalhado" class="error-msg">{{ errors.ultimoDiaTrabalhado }}</p>
+            <p v-if="erroCampo('ultimoDiaTrabalhado')" class="error-msg">{{ erroCampo('ultimoDiaTrabalhado') }}</p>
           </div>
         </div>
 
@@ -124,12 +124,12 @@
                 type="text"
                 placeholder="0,00"
                 inputmode="numeric"
-                :class="['pl-10', errors.salarioBrutoMensal ? 'input-error' : 'input']"
+                :class="['pl-10', erroCampo('salarioBrutoMensal') ? 'input-error' : 'input']"
                 @input="handleSalarioInput"
                 @blur="validate('salarioBrutoMensal')"
               />
             </div>
-            <p v-if="errors.salarioBrutoMensal" class="error-msg">{{ errors.salarioBrutoMensal }}</p>
+            <p v-if="erroCampo('salarioBrutoMensal')" class="error-msg">{{ erroCampo('salarioBrutoMensal') }}</p>
           </div>
         </div>
       </div>
@@ -172,6 +172,7 @@ const salarioDisplay = ref(
 )
 
 const errors = reactive<Record<string, string>>({})
+const erroCampo = (field: string) => errors[field] || store.errosValidacao[field] || ''
 
 function handleDateInput(field: 'admissao' | 'desligamento' | 'ultimoDia', event: Event) {
   const input = event.target as HTMLInputElement
@@ -211,6 +212,7 @@ function maskCNPJ(event: Event) {
 
 function validate(field: string) {
   errors[field] = ''
+  delete store.errosValidacao[field]
   if (field === 'nomeTrabalhador' && dados.nomeTrabalhador.length < 3) {
     errors[field] = 'Nome deve ter ao menos 3 caracteres'
   }

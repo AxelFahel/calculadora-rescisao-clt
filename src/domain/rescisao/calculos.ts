@@ -665,7 +665,8 @@ export function calcularRescisao(dados: DadosContrato): ResultadoRescisao {
   const totalDescontos = arredondar(
     verbas.filter((v) => !v.positivo).reduce((acc, v) => acc + v.valor, 0),
   )
-  const totalLiquido = arredondar(totalBruto - totalDescontos + multaFgts)
+  const totalLiquido = arredondar(totalBruto - totalDescontos)
+  const totalComFgts = arredondar(totalLiquido + multaFgts)
 
   return {
     dadosContrato: dados,
@@ -681,6 +682,7 @@ export function calcularRescisao(dados: DadosContrato): ResultadoRescisao {
     totalBruto,
     totalDescontos,
     totalLiquido,
+    totalComFgts,
     dataCalculo: new Date().toISOString(),
     versaoMotor: VERSAO_MOTOR,
   }

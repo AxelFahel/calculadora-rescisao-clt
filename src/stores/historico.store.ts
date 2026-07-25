@@ -13,7 +13,19 @@ function carregarDoStorage(): HistoricoItem[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (!raw) return []
-    return JSON.parse(raw) as HistoricoItem[]
+    const items = JSON.parse(raw) as HistoricoItem[]
+    return items.map((item) => {
+      if (item.resultado.totalComFgts === undefined) {
+        const totalComFgts = item.resultado.totalLiquido
+        const totalLiquido = Math.round((totalComFgts - item.resultado.multaFgts) * 100) / 100
+        return {
+          ...item,
+          totalLiquido,
+          resultado: { ...item.resultado, totalLiquido, totalComFgts },
+        }
+      }
+      return item
+    })
   } catch {
     return []
   }
@@ -43,6 +55,9 @@ export const useHistoricoStore = defineStore('historico', () => {
   )
 
   function salvar(resultado: ResultadoRescisao): string {
+    const existente = calculos.value.find((item) => item.dataCalculo === resultado.dataCalculo)
+    if (existente) return existente.id
+
     const id = generateId()
     const item: HistoricoItem = {
       id,
@@ -66,6 +81,12 @@ export const useHistoricoStore = defineStore('historico', () => {
     salvarNoStorage(calculos.value)
   }
 
+  function restaurar(item: HistoricoItem) {
+    if (calculos.value.some((calculo) => calculo.id === item.id)) return
+    calculos.value = [item, ...calculos.value].slice(0, MAX_HISTORICO)
+    salvarNoStorage(calculos.value)
+  }
+
   function limparTudo() {
     calculos.value = []
     localStorage.removeItem(STORAGE_KEY)
@@ -81,6 +102,7 @@ export const useHistoricoStore = defineStore('historico', () => {
     calculosOrdenados,
     salvar,
     remover,
+    restaurar,
     limparTudo,
     buscarPorId,
   }

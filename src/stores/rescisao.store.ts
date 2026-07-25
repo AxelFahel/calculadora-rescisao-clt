@@ -46,9 +46,10 @@ export const useRescisaoStore = defineStore('rescisao', () => {
   const documentos = ref<DocumentoUpload[]>([])
   const calculando = ref(false)
   const erroCalculo = ref<string | null>(null)
+  const errosValidacao = ref<Record<string, string>>({})
 
   // ── Getters ──
-  const etapasTotal = computed(() => 5)
+  const etapasTotal = computed(() => 6)
   const podeContinuar = computed(() => etapaAtual.value < etapasTotal.value)
   const podeVoltar = computed(() => etapaAtual.value > 1)
   const totalDocumentos = computed(() => documentos.value.length)
@@ -60,6 +61,7 @@ export const useRescisaoStore = defineStore('rescisao', () => {
     // Limpa resultado ao mudar dados
     resultado.value = null
     erroCalculo.value = null
+    errosValidacao.value = {}
   }
 
   function avancarEtapa() {
@@ -141,9 +143,15 @@ export const useRescisaoStore = defineStore('rescisao', () => {
   }
 
   function carregarDados(dadosCarregados: DadosContrato) {
-    dados.value = { ...dadosCarregados }
+    dados.value = structuredClone(dadosCarregados)
     resultado.value = null
     etapaAtual.value = 1
+  }
+
+  function carregarResultado(resultadoCarregado: ResultadoRescisao) {
+    resultado.value = structuredClone(resultadoCarregado)
+    dados.value = structuredClone(resultadoCarregado.dadosContrato)
+    etapaAtual.value = etapasTotal.value
   }
 
   function exportarJSON(): string {
@@ -166,6 +174,7 @@ export const useRescisaoStore = defineStore('rescisao', () => {
     documentos,
     calculando,
     erroCalculo,
+    errosValidacao,
     // Getters
     etapasTotal,
     podeContinuar,
@@ -182,6 +191,7 @@ export const useRescisaoStore = defineStore('rescisao', () => {
     removerDocumento,
     limpar,
     carregarDados,
+    carregarResultado,
     exportarJSON,
   }
 })

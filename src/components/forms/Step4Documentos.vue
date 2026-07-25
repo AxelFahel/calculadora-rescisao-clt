@@ -1,6 +1,9 @@
 <template>
   <div>
-    <h2 class="text-xl font-bold text-slate-800 dark:text-white mb-1">Documentos</h2>
+    <div class="flex items-center gap-3 mb-1">
+      <h2 class="text-xl font-bold text-slate-800 dark:text-white">Documentos</h2>
+      <span class="badge-neutral">Opcional</span>
+    </div>
     <p class="text-sm text-slate-500 dark:text-slate-400 mb-6">Anexe documentos opcionalmente para referência. <strong>Nenhum arquivo é enviado a servidores.</strong></p>
 
     <!-- Alerta de privacidade -->
@@ -19,6 +22,11 @@
       @dragleave="isDragging = false"
       @drop.prevent="handleDrop"
       @click="fileInputRef?.click()"
+      @keydown.enter.prevent="fileInputRef?.click()"
+      @keydown.space.prevent="fileInputRef?.click()"
+      role="button"
+      tabindex="0"
+      aria-label="Selecionar documentos para anexar"
     >
       <input
         ref="fileInputRef"
@@ -38,6 +46,12 @@
         </div>
       </div>
     </div>
+
+    <AppAlert v-if="uploadErrors.length" type="error" class="mb-6" dismissible @dismiss="uploadErrors = []">
+      <ul class="list-disc pl-5">
+        <li v-for="erro in uploadErrors" :key="erro">{{ erro }}</li>
+      </ul>
+    </AppAlert>
 
     <!-- Upload dialog por categoria -->
     <AppModal :open="showCategoryModal" title="Tipo de documento" size="sm" @close="showCategoryModal = false">
@@ -128,6 +142,7 @@ const showCategoryModal = ref(false)
 const selectedCategory = ref<CategoriaDocumento>(CategoriaDocumento.OUTRO)
 const pendingFiles = ref<File[]>([])
 const fileInputRef = ref<HTMLInputElement | null>(null)
+const uploadErrors = ref<string[]>([])
 
 const categorias = [
   { value: CategoriaDocumento.CARTEIRA_TRABALHO, icon: '📗', label: 'Carteira de Trabalho' },
@@ -156,8 +171,12 @@ function handleDrop(event: DragEvent) {
 
 async function confirmUpload() {
   showCategoryModal.value = false
+  uploadErrors.value = []
   for (const file of pendingFiles.value) {
-    await store.adicionarDocumento(file, selectedCategory.value)
+    const resultado = await store.adicionarDocumento(file, selectedCategory.value)
+    if (!resultado.success) {
+      uploadErrors.value.push(`${file.name}: ${resultado.error ?? 'arquivo inválido'}`)
+    }
   }
   pendingFiles.value = []
   if (fileInputRef.value) fileInputRef.value.value = ''

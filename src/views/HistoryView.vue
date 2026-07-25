@@ -1,6 +1,6 @@
 <template>
   <div class="animate-fade-in">
-    <div class="flex items-center justify-between mb-8">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
       <div>
         <h1 class="text-2xl font-bold text-slate-900 dark:text-white">Histórico de cálculos</h1>
         <p class="text-slate-500 dark:text-slate-400 mt-1">{{ historico.totalCalculos }} cálculo(s) salvos</p>
@@ -16,6 +16,40 @@
       </div>
     </div>
 
+    <AppAlert type="info" class="mb-6">
+      Seus cálculos ficam somente neste navegador e não são sincronizados com outros dispositivos.
+    </AppAlert>
+
+    <AppAlert v-if="ultimoRemovido" type="warning" class="mb-6" aria-live="polite">
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <span>Cálculo de {{ ultimoRemovido.nomeTrabalhador }} removido.</span>
+        <AppButton variant="outline" size="sm" @click="desfazerRemocao">Desfazer</AppButton>
+      </div>
+    </AppAlert>
+
+    <div v-if="historico.totalCalculos > 0" class="card p-4 mb-6 grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-3">
+      <div>
+        <label for="buscar-historico" class="sr-only">Buscar no histórico</label>
+        <input
+          id="buscar-historico"
+          v-model="busca"
+          type="search"
+          class="input"
+          placeholder="Buscar por trabalhador ou empresa"
+        />
+      </div>
+      <select v-model="ordenacao" class="input sm:w-48" aria-label="Ordenar histórico">
+        <option value="recentes">Mais recentes</option>
+        <option value="nome">Nome</option>
+        <option value="valor">Maior valor</option>
+      </select>
+    </div>
+
+    <div v-if="historico.totalCalculos > 0 && itensFiltrados.length === 0" class="card p-10 text-center mb-6">
+      <p class="font-semibold text-slate-700 dark:text-slate-200">Nenhum cálculo encontrado</p>
+      <p class="text-sm text-slate-500 mt-1">Tente buscar por outro nome ou empresa.</p>
+    </div>
+
     <!-- Vazio -->
     <div v-if="historico.totalCalculos === 0" class="text-center py-20">
       <div class="text-6xl mb-4">📋</div>
@@ -27,7 +61,7 @@
     <!-- Grid de cards -->
     <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
       <div
-        v-for="item in historico.calculosOrdenados"
+        v-for="item in itensFiltrados"
         :key="item.id"
         class="card p-5 flex flex-col gap-4 hover:shadow-card-hover transition-all duration-200"
       >
@@ -54,8 +88,8 @@
         <!-- Actions -->
         <div class="flex gap-2 pt-1 border-t border-slate-100 dark:border-slate-700">
           <AppButton variant="outline" size="sm" class="flex-1" :id="`btn-ver-${item.id}`" @click="verDetalhe(item)">Ver detalhe</AppButton>
-          <AppButton variant="secondary" size="sm" :id="`btn-duplicar-${item.id}`" @click="duplicar(item)">Duplicar</AppButton>
-          <AppButton variant="ghost" size="sm" :id="`btn-remover-${item.id}`" @click="historico.remover(item.id)">
+          <AppButton variant="secondary" size="sm" :id="`btn-duplicar-${item.id}`" @click="duplicar(item)">Usar como novo</AppButton>
+          <AppButton variant="ghost" size="sm" :id="`btn-remover-${item.id}`" :aria-label="`Remover cálculo de ${item.nomeTrabalhador}`" @click="confirmarRemocao(item)">
             <svg class="w-4 h-4 text-danger-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
           </AppButton>
         </div>
@@ -65,6 +99,7 @@
 </template>
 
 <script setup lang="ts">
+import { computed, ref } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import { useHistoricoStore } from '../stores/historico.store'
 import { useRescisaoStore } from '../stores/rescisao.store'
@@ -73,20 +108,50 @@ import type { HistoricoItem } from '../domain/rescisao/types'
 import { formatCurrency } from '../utils/currency'
 import { formatDate } from '../utils/dates'
 import AppButton from '../components/ui/AppButton.vue'
+import AppAlert from '../components/ui/AppAlert.vue'
 
 const historico = useHistoricoStore()
 const rescisao = useRescisaoStore()
 const router = useRouter()
+const busca = ref('')
+const ordenacao = ref<'recentes' | 'nome' | 'valor'>('recentes')
+const ultimoRemovido = ref<HistoricoItem | null>(null)
+
+const itensFiltrados = computed(() => {
+  const termo = busca.value.trim().toLocaleLowerCase('pt-BR')
+  const itens = historico.calculosOrdenados.filter((item) =>
+    !termo ||
+    item.nomeTrabalhador.toLocaleLowerCase('pt-BR').includes(termo) ||
+    item.empresa?.toLocaleLowerCase('pt-BR').includes(termo),
+  )
+  if (ordenacao.value === 'nome') {
+    return itens.sort((a, b) => a.nomeTrabalhador.localeCompare(b.nomeTrabalhador, 'pt-BR'))
+  }
+  if (ordenacao.value === 'valor') return itens.sort((a, b) => b.totalLiquido - a.totalLiquido)
+  return itens
+})
 
 async function verDetalhe(item: HistoricoItem) {
-  rescisao.carregarDados(item.resultado.dadosContrato)
-  rescisao.calcular()
+  rescisao.carregarResultado(item.resultado)
   await router.push({ name: 'resultado' })
 }
 
 async function duplicar(item: HistoricoItem) {
   rescisao.carregarDados(item.resultado.dadosContrato)
   await router.push({ name: 'novo-calculo', query: { preservar: '1' } })
+}
+
+function confirmarRemocao(item: HistoricoItem) {
+  if (confirm(`Remover o cálculo de ${item.nomeTrabalhador}?`)) {
+    ultimoRemovido.value = item
+    historico.remover(item.id)
+  }
+}
+
+function desfazerRemocao() {
+  if (!ultimoRemovido.value) return
+  historico.restaurar(ultimoRemovido.value)
+  ultimoRemovido.value = null
 }
 
 function confirmarLimpeza() {

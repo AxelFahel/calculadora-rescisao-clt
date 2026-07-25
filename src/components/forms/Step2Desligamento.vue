@@ -55,7 +55,7 @@
         <label class="label label-required mb-3 block">Tipo de aviso prévio</label>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <label
-            v-for="opt in tiposAviso"
+            v-for="opt in tiposAvisoDisponiveis"
             :key="opt.value"
             :class="[
               'flex items-start gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all duration-150',
@@ -110,7 +110,7 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, computed } from 'vue'
+import { reactive, computed, watch } from 'vue'
 import { useRescisaoStore } from '../../stores/rescisao.store'
 import { TipoRescisao, TipoAvisoPrevio, LABELS_TIPO_RESCISAO } from '../../domain/rescisao/types'
 import { REGRAS_POR_RESCISAO } from '../../domain/rescisao/regras'
@@ -145,6 +145,40 @@ const tiposAviso = [
   { value: TipoAvisoPrevio.DISPENSADO, label: 'Dispensado pelo empregador', desc: 'Empregador dispensa o cumprimento' },
   { value: TipoAvisoPrevio.NAO_SE_APLICA, label: 'Não se aplica', desc: 'Para modalidades sem aviso prévio' },
 ]
+
+const tiposAvisoDisponiveis = computed(() => {
+  if (!regrasAtivas.value.temAvisoPrevio) {
+    return tiposAviso.filter((opt) => opt.value === TipoAvisoPrevio.NAO_SE_APLICA)
+  }
+  if (dados.tipoRescisao === TipoRescisao.PEDIDO_DEMISSAO) {
+    const permitidos: TipoAvisoPrevio[] = [
+      TipoAvisoPrevio.TRABALHADO,
+      TipoAvisoPrevio.NAO_CUMPRIDO_EMPREGADO,
+      TipoAvisoPrevio.DISPENSADO,
+    ]
+    return tiposAviso.filter((opt) =>
+      permitidos.includes(opt.value),
+    )
+  }
+  const permitidos: TipoAvisoPrevio[] = [
+    TipoAvisoPrevio.INDENIZADO_EMPREGADOR,
+    TipoAvisoPrevio.TRABALHADO,
+    TipoAvisoPrevio.DISPENSADO,
+  ]
+  return tiposAviso.filter((opt) =>
+    permitidos.includes(opt.value),
+  )
+})
+
+watch(
+  () => dados.tipoRescisao,
+  () => {
+    if (!tiposAvisoDisponiveis.value.some((opt) => opt.value === dados.tipoAvisoPrevio)) {
+      dados.tipoAvisoPrevio = tiposAvisoDisponiveis.value[0]?.value ?? TipoAvisoPrevio.NAO_SE_APLICA
+    }
+    syncStore()
+  },
+)
 
 const regrasAtivas = computed(() => REGRAS_POR_RESCISAO[dados.tipoRescisao])
 

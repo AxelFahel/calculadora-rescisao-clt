@@ -14,22 +14,28 @@
       <div class="mb-6 flex flex-wrap items-start justify-between gap-4">
         <div>
           <div class="flex items-center gap-3 mb-4">
-            <RouterLink :to="{ name: 'novo-calculo', query: { preservar: '1' } }" class="btn-ghost px-2 py-1.5 text-sm no-print">
+            <button type="button" class="btn-ghost px-2 py-1.5 text-sm no-print" @click="voltarParaRevisao">
               <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
-              Voltar
-            </RouterLink>
+              Revisar ou editar
+            </button>
           </div>
           <h1 class="text-2xl font-bold text-slate-900 dark:text-white">Resultado da Rescisão</h1>
           <p class="text-slate-500 dark:text-slate-400 text-sm mt-1">Cálculo realizado em {{ formatDateTime(r.dataCalculo) }}</p>
         </div>
         <div class="flex flex-wrap gap-2 no-print">
-          <AppButton variant="secondary" size="sm" id="btn-salvar" @click="salvar">💾 Salvar</AppButton>
+          <AppButton variant="secondary" size="sm" id="btn-salvar" :disabled="salvo" @click="salvar">
+            {{ salvo ? '✓ Salvo no histórico' : '💾 Salvar' }}
+          </AppButton>
           <AppButton variant="secondary" size="sm" id="btn-json" @click="baixarJSON">📦 JSON</AppButton>
           <AppButton variant="secondary" size="sm" id="btn-imprimir" @click="imprimir">🖨️ Imprimir</AppButton>
-          <AppButton variant="outline" size="sm" id="btn-pdf" @click="imprimir">📄 Exportar PDF</AppButton>
+          <AppButton variant="outline" size="sm" id="btn-pdf" @click="imprimir">📄 Imprimir ou salvar PDF</AppButton>
           <AppButton variant="ghost" size="sm" id="btn-novo-calculo-resultado" @click="novoCalculo">🔄 Novo</AppButton>
         </div>
       </div>
+
+      <AppAlert v-if="salvo" type="success" class="mb-6 no-print" aria-live="polite">
+        Cálculo salvo neste navegador. Você pode consultá-lo na página de histórico.
+      </AppAlert>
 
       <!-- Aviso legal -->
       <AppAlert type="warning" class="mb-6 no-print">
@@ -64,9 +70,9 @@
           <p class="text-3xl font-bold text-danger-600 dark:text-danger-400">{{ formatCurrency(r.totalDescontos) }}</p>
         </div>
         <div class="card p-6 text-center border-t-4 border-brand-500 ring-1 ring-brand-200 dark:ring-brand-900">
-          <p class="text-sm text-slate-500 dark:text-slate-400 mb-1">Total Líquido Estimado</p>
+          <p class="text-sm text-slate-500 dark:text-slate-400 mb-1">Pagamento estimado da rescisão</p>
           <p class="text-3xl font-bold text-brand-600 dark:text-brand-400">{{ formatCurrency(r.totalLiquido) }}</p>
-          <p class="text-xs text-slate-400 mt-1">+ Multa FGTS: {{ formatCurrency(r.multaFgts) }}</p>
+          <p class="text-xs text-slate-400 mt-1">Valor pago diretamente, sem somar o FGTS</p>
         </div>
       </div>
 
@@ -149,7 +155,7 @@
       <!-- FGTS -->
       <div class="card p-6 mb-6">
         <h2 class="text-lg font-bold text-slate-800 dark:text-white mb-4">FGTS</h2>
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <div class="p-4 bg-slate-50 dark:bg-slate-800 rounded-xl">
             <p class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Saldo informado</p>
             <p class="text-xl font-bold text-slate-800 dark:text-white">{{ formatCurrency(r.saldoFgtsInformado) }}</p>
@@ -165,7 +171,15 @@
             <p class="text-xl font-bold text-success-700 dark:text-success-400">{{ formatCurrency(r.multaFgts) }}</p>
             <p class="text-xs text-success-600 dark:text-success-500 mt-1">Sobre saldo informado</p>
           </div>
+          <div class="p-4 bg-brand-50 dark:bg-brand-950 rounded-xl border border-brand-200 dark:border-brand-800">
+            <p class="text-xs font-semibold text-brand-700 dark:text-brand-300 uppercase tracking-wide mb-1">Rescisão + multa FGTS</p>
+            <p class="text-xl font-bold text-brand-700 dark:text-brand-300">{{ formatCurrency(totalComFgts) }}</p>
+            <p class="text-xs text-brand-600 dark:text-brand-400 mt-1">Soma apenas informativa; recebimentos separados</p>
+          </div>
         </div>
+        <p class="text-xs text-slate-500 dark:text-slate-400 mt-4">
+          O saldo do FGTS e sua multa são movimentados na conta vinculada e não fazem parte do pagamento direto da rescisão.
+        </p>
       </div>
 
       <!-- Aviso legal final -->
@@ -184,7 +198,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import { useRescisaoStore } from '../stores/rescisao.store'
 import { useHistoricoStore } from '../stores/historico.store'
@@ -198,6 +212,7 @@ import AppButton from '../components/ui/AppButton.vue'
 const store = useRescisaoStore()
 const historico = useHistoricoStore()
 const router = useRouter()
+const salvo = ref(false)
 
 const r = computed(() => store.resultado!)
 
@@ -206,11 +221,12 @@ const tempoServicoFormatado = computed(() => {
   const { anos, meses, dias } = r.value.tempoServico
   return formatTempoServico(anos, meses, dias)
 })
+const totalComFgts = computed(() => r.value.totalComFgts ?? r.value.totalLiquido + r.value.multaFgts)
 
 function salvar() {
   if (store.resultado) {
     historico.salvar(store.resultado)
-    alert('Cálculo salvo no histórico!')
+    salvo.value = true
   }
 }
 
@@ -227,6 +243,11 @@ function baixarJSON() {
 
 function imprimir() {
   window.print()
+}
+
+async function voltarParaRevisao() {
+  store.irParaEtapa(4)
+  await router.push({ name: 'novo-calculo', query: { preservar: '1' } })
 }
 
 async function novoCalculo() {

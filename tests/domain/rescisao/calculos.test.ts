@@ -409,9 +409,10 @@ describe('calcularRescisao — cenários completos', () => {
     expect(new Date(resultado.dataCalculo).getTime()).toBeGreaterThan(0)
   })
 
-  it('totais são consistentes (bruto - descontos = liquido - multa)', () => {
+  it('separa o pagamento da rescisão dos valores de FGTS', () => {
     const dados = makeDados({ saldoFgtsInformado: 6000 })
     const r = calcularRescisao(dados)
-    expect(r.totalLiquido).toBeCloseTo(r.totalBruto - r.totalDescontos + r.multaFgts, 2)
+    expect(r.totalLiquido).toBeCloseTo(r.totalBruto - r.totalDescontos, 2)
+    expect(r.totalComFgts).toBeCloseTo(r.totalLiquido + r.multaFgts, 2)
   })
 })

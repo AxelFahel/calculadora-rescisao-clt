@@ -43,6 +43,18 @@
               </RouterLink>
             </div>
           </div>
+          <div class="md:hidden grid grid-cols-3 gap-1 pb-2" aria-label="Navegação principal">
+            <RouterLink
+              v-for="link in navLinks"
+              :key="`mobile-${link.to}`"
+              :to="link.to"
+              class="min-h-11 px-2 py-2 rounded-lg text-xs font-medium text-center flex items-center justify-center text-slate-600 dark:text-slate-300"
+              :class="{ 'bg-brand-50 dark:bg-brand-950 text-brand-700 dark:text-brand-300': $route.path === link.to }"
+              @click="link.to === '/calculo/novo' && iniciarNovoCalculo()"
+            >
+              {{ link.label }}
+            </RouterLink>
+          </div>
         </div>
       </nav>
 
